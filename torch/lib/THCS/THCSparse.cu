@@ -93,6 +93,43 @@ void THCudaSparse_Dcsrmm2(THCState *state, char transa, char transb, int64_t m, 
   THCusparseCheck(cusparseDcsrmm2(handle, opa, opb, i_m, i_n, i_k, i_nnz, &alpha, desc, csrvala, csrrowptra, csrcolinda, b, i_ldb, &beta, c, i_ldc));
 }
 
+void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, float *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, float *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t nnzc, float *csrvalc, int *csrrowptrc, int *csrcolindc)
+{
+  cusparseOperation_t opa = convertTransToCusparseOperation(transa);
+  cusparseOperation_t opb = convertTransToCusparseOperation(transb);
+
+  THAssertMsg((m <= INT_MAX) && (n <= INT_MAX) && (k <= INT_MAX) && (nnza <= INT_MAX) && (nnzb <= INT_MAX) && (nnzc <= INT_MAX),
+    "cusparseScsrgemm only supports m, n, k, nnzA, nnzB, and nnzC with the bound [val] <= %d",
+    INT_MAX);
+  int i_m = (int)m;
+  int i_n = (int)n;
+  int i_k = (int)k;
+  int i_nnza = (int)nnza;
+  int i_nnzb = (int)nnzb;
+  int i_nnzc = (int)nnzc;
+
+  cusparseHandle_t handle = THCState_getCurrentSparseHandle(state);
+  cusparseSetStream(handle, THCState_getCurrentStream(state));
+
+  cusparseMatDescr_t descA;
+  cusparseCreateMatDescr(&descA);
+  cusparseMatDescr_t descB;
+  cusparseCreateMatDescr(&descB);
+  cusparseMatDescr_t descC;
+  cusparseCreateMatDescr(&descC);
+
+#if TH_INDEX_BASE == 1
+  cusparseSetMatIndexBase(&descA, CUSPARSE_INDEX_BASE_ONE);
+  cusparseSetMatIndexBase(&descB, CUSPARSE_INDEX_BASE_ONE);
+  cusparseSetMatIndexBase(&descC, CUSPARSE_INDEX_BASE_ONE);
+#endif
+
+  THCusparseCheck(cusparseScsrgemm(handle, opa, opb, i_m, i_n, i_k,
+        descA, i_nnza, csrvala, csrrowptra, csrcolinda,
+        descB, i_nnzb, csrvalb, csrrowptrb, csrcolindb,
+        descC, i_nnzc, csrvalc, csrrowptrc, csrcolindc);
+}
+
 /* format conversion */
 void THCudaSparse_CreateIdentityPermutation(THCState *state, int64_t nnz, int *P) {
   THAssertMsg((nnz <= INT_MAX),
