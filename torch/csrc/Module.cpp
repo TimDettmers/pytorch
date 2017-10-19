@@ -711,7 +711,7 @@ static PyMethodDef TorchMethods[] = {
   {"saddmm",          (PyCFunction)THSPModule_sspaddmm,       METH_VARARGS | METH_KEYWORDS,  NULL},
   {"dsmm",            (PyCFunction)THSPModule_spmm,           METH_VARARGS | METH_KEYWORDS,  NULL},
   {"hsmm",            (PyCFunction)THSPModule_hspmm,          METH_VARARGS | METH_KEYWORDS,  NULL},
-  {"sgemm",           (PyCFunction)THSPModule_sgemm,          METH_VARARGS | METH_KEYWORDS,  NULL},
+  {"spmms",           (PyCFunction)THSPModule_spmms,          METH_VARARGS | METH_KEYWORDS,  NULL},
   {NULL, NULL, 0, NULL}
 };
 

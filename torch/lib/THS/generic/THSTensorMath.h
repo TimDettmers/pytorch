@@ -20,6 +20,8 @@ TH_API void THSTensor_(cmul)(THSTensor *r_, THSTensor *t, THSTensor *src);
 
 TH_API void THTensor_(spaddcmul)(THTensor *r_, THTensor *t, real value, THSTensor *src1, THSTensor *src2);
 
+// sparse = sparse * sparse
+TH_API void THSTensor_(spmms)(THSTensor *r_, THSTensor *sp1, THSTensor *sp2);
 // dense = beta * dense + alpha * sparse * dense
 TH_API void THSTensor_(spaddmm)(THTensor *r_, real beta, THTensor *t, real alpha, THSTensor *sparse, THTensor *dense);
 // sparse = beta * sparse + alpha * sparse * dense

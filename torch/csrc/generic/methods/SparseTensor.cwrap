@@ -250,6 +250,21 @@ PyObject * THSPTensor_(size)(PyObject *self, PyObject *args, PyObject *kwargs)
     - THTensor* mat2
 ]]
 
+
+[[
+  name: spmms
+  variants:
+    - function
+  sparse: yes
+  cname: spmms
+  return: argument 0
+  arguments:
+    - arg: THSTensor* result
+      output: True
+    - THSTensor* mat1
+    - THSTensor* mat2
+]]
+
 [[
   name: sspaddmm
   sparse: yes

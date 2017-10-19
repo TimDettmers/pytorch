@@ -277,6 +277,10 @@ THLongTensor *THSTensor_(toCSR)(int64_t const *indices, int64_t dim, int64_t nnz
   return csr;
 }
 
+void THSTensor_(spmms)(THSTensor *r_, THSTensor *sp1, THSTensor *sp2){
+  THError("Sorry, as of now, sparse-sparse matrix multiplication is only supported on the GPU.");
+}
+
 void THSTensor_(spaddmm)(THTensor *r_,
     real beta, THTensor *t,
     real alpha, THSTensor *sparse_, THTensor *dense) {

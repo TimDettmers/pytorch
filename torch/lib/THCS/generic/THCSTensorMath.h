@@ -14,7 +14,8 @@ TH_API void THCSTensor_(zero)(THCState *state, THCSTensor *r_);
 
 TH_API void THCTensor_(spaddcmul)(THCState *state, THCTensor *r_, THCTensor *t, real value, THCSTensor *src1, THCSTensor *src2);
 TH_API void THCTensor_(spaddcdiv)(THCState *state, THCTensor *r_, THCTensor *t, real value, THCSTensor *src1, THCSTensor *src2);
-
+// sparse = sparse * sparse
+TH_API void THCSTensor_(spmms)(THCState *state, THCSTensor *r_, THCSTensor *sp1, THCSTensor *sp2);
 // dense = beta * dense + alpha * sparse * dense
 TH_API void THCSTensor_(spaddmm)(THCState *state, THCTensor *r_, real beta, THCTensor *t, real alpha, THCSTensor *sparse, THCTensor *dense);
 // sparse = beta * sparse + alpha * sparse * dense

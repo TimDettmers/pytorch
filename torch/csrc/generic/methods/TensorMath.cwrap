@@ -2066,6 +2066,13 @@
         - CONSTANT AS_REAL(1)
         - THSTensor* self
         - THTensor* mat2
+    - cname: spmms
+      sparse: True
+      arguments:
+        - arg: THSTensor* result
+          output: True
+        - THSTensor* mat1
+        - THSTensor* mat2
 ]]
 
 [[

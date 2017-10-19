@@ -157,6 +157,23 @@ void THCSTensor_(sspaddmm)(THCState *state, THCSTensor *r_, real beta, THCSTenso
   // TODO Write some kernels
 }
 
+void THCSTensor_(spmms)(THCState *state, THCSTensor *r_, THCSTensor *sp1, THCSTensor *sp2)
+{
+#if defined(THCS_REAL_IS_FLOAT) || defined(THCS_REAL_IS_DOUBLE)
+#if defined(THCS_REAL_IS_FLOAT)
+	// call function float
+#elif defined(THCS_REAL_IS_DOUBLE)
+	// call function double
+#endif
+	// args
+
+	// free variables
+#else
+  THError("unimplemented data type");
+#endif
+
+}
+
 void THCSTensor_(hspmm)(THCState *state, THCSTensor *r_, real alpha, THCSTensor *sparse_, THCTensor *dense) {
 #if CUDA_VERSION >= 7000
   THCThrustAllocator thrustAlloc(state);
