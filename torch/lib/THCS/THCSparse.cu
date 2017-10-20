@@ -95,6 +95,7 @@ void THCudaSparse_Dcsrmm2(THCState *state, char transa, char transb, int64_t m, 
 
 void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, float *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, float *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t nnzc, float *csrvalc, int *csrrowptrc, int *csrcolindc)
 {
+
   cusparseOperation_t opa = convertTransToCusparseOperation(transa);
   cusparseOperation_t opb = convertTransToCusparseOperation(transb);
 
@@ -123,6 +124,30 @@ void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m,
   cusparseSetMatIndexBase(&descB, CUSPARSE_INDEX_BASE_ONE);
   cusparseSetMatIndexBase(&descC, CUSPARSE_INDEX_BASE_ONE);
 #endif
+
+	int baseC;
+	int *nnzTotalDevHostPtr = &nnzc;
+
+	CUDA_CHECK(THCudaMalloc(state, &csrrowptrc, m+1));
+
+  THCusparseCheck(cusparseXcsrgemmNnz(handle, transa, transb, m, n, k,
+          descrA, nnza, csrrowptra, csrcolinda,
+          descrB, nnzb, csrrowptrb, csrcolindb,
+          descrC, csrrowptrc, nnzTotalDevHostPtr));
+
+  if (NULL != nnzTotalDevHostPtr)
+  {
+      nnzc = *nnzTotalDevHostPtr;
+  }
+  else
+  {
+      CUDA_CHECK(cudaMemcpy(&nnzC, csrrowptrc+m, sizeof(int), cudaMemcpyDeviceToHost));
+      CUDA_CHECK(cudaMemcpy(&baseC, csrrowptrc, sizeof(int), cudaMemcpyDeviceToHost));
+      nnzc -= baseC;
+  }
+
+	THCudaCheck(THCudaMalloc(state, &csrcolindc, nnzc));
+	THCudaCheck(THCudaMalloc(state, &csrvalc, nnzc));
 
   THCusparseCheck(cusparseScsrgemm(handle, opa, opb, i_m, i_n, i_k,
         descA, i_nnza, csrvala, csrrowptra, csrcolinda,

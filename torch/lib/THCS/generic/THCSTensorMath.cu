@@ -157,17 +157,123 @@ void THCSTensor_(sspaddmm)(THCState *state, THCSTensor *r_, real beta, THCSTenso
   // TODO Write some kernels
 }
 
-void THCSTensor_(spmms)(THCState *state, THCSTensor *r_, THCSTensor *sp1, THCSTensor *sp2)
-{
+void THCSTensor_(spmms)(THCState *state, THCSTensor *r_, THCSTensor *sp1, THCSTensor *sp2){
 #if defined(THCS_REAL_IS_FLOAT) || defined(THCS_REAL_IS_DOUBLE)
+
+  THCAssertSameGPU(THCSTensor_(checkGPU)(state, 1, 4, r_, sp1, sp2));
+  THCudaIntTensor *csrA, *csrB;
+  THCIndexTensor *indices_a, *indices_b;
+  THCTensor *values_a, *values_b;
+
+  THArgCheck(sparse_->nDimensionI == 2, 2,
+      "matrices expected, got %dD tensor", sp1->nDimensionI);
+  THArgCheck(sparse_->nDimensionV == 0, 2,
+      "scalar values expected, got %dD values", sp1->nDimensionV);
+  THArgCheck(dense->nDimension == 2, 2,
+      "matrices expected, got %dD tensor", sp2->nDimension);
+
+  int64_t m = THCSTensor_(size)(state, sp1, 0);
+  int64_t k = THCSTensor_(size)(state, sp1, 1);
+  int64_t n = THCTensor_(size)(state, sp2, 1);
+
+  int64_t m2 = THCSTensor_(size)(state, sp2, 0);
+
+  int64_t nnza = THCSTensor_(nnz)(state, sp1);
+  int64_t nnzb = THCSTensor_(nnz)(state, sp2);
+
+
+  // A
+  indices_a = THCSTensor_(newIndices)(state, sp1);
+  values_a = THCSTensor_(newValues)(state, sp1);
+
+  THCIndexTensor *rowIndicesA = THCIndexTensor_(newSelect)(state, indices_a, 0, 0);
+  THCIndexTensor *colIndicesA = THCIndexTensor_(newSelect)(state, indices_a, 0, 1);
+  csrA = THCSTensor_(toCSR)(state, rowIndicesA, m, nnza);
+
+  THCudaIntTensor *colIndicesIntA = THCudaIntTensor_newWithSize1d(state, colIndicesA->size[0]);
+  THCudaIntTensor_copyCudaLong(state, colIndicesIntA, colIndicesA);
+
+
+  // B
+  indices_b = THCSTensor_(newIndices)(state, sp2);
+  values_b = THCSTensor_(newValues)(state, sp2);
+
+  THCIndexTensor *rowIndicesB = THCIndexTensor_(newSelect)(state, indices_b, 0, 0);
+  THCIndexTensor *colIndicesB = THCIndexTensor_(newSelect)(state, indices_b, 0, 1);
+  csrB = THCSTensor_(toCSR)(state, rowIndicesB, m2, nnzb);
+
+  THCudaIntTensor *colIndicesIntB = THCudaIntTensor_newWithSize1d(state, colIndicesB->size[0]);
+  THCudaIntTensor_copyCudaLong(state, colIndicesIntB, colIndicesB);
+
+  // C will be constructed by cuSparse
+  THCTensor *values_c = THCSTensor_(newValues)(state, r_);
+  THCIndexTensor *indices_c = THCSTensor_(newIndices)(state, r_);
+  THCudaIntTensor *colIndicesIntC = THCudaIntTensor_new(state);
+  THCudaIntTensor *rowIndicesIntC = THCudaIntTensor_new(state);
+  int64_t nnzc;
+
+  // TODO: Handle strides for transposed states
+
+
 #if defined(THCS_REAL_IS_FLOAT)
+THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, float *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, float *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t nnzc, float *csrvalc, int *csrrowptrc, int *csrcolindc);
 	// call function float
+  THCudaSparse_Scsrgemm(
 #elif defined(THCS_REAL_IS_DOUBLE)
+  THCudaSparse_Dcsrgemm(
 	// call function double
 #endif
 	// args
+	state,
+	'n',
+	'n',
+  m,
+	n,
+	k,
+  nnza,
+  THCTensor_(data)(state, values_a),
+  THCudaIntTensor_data(state, csrA),
+  THCudaIntTensor_data(state, colIndicesIntA),
+  nnzb,
+  THCTensor_(data)(state, values_b),
+  THCudaIntTensor_data(state, csrB),
+  THCudaIntTensor_data(state, colIndicesIntB),
+  nnzc,
+  THCTensor_(data)(state, values_c),
+  THCudaIntTensor_data(state, rowIndicesIntC),
+  THCudaIntTensor_data(state, colIndicesIntC));
 
-	// free variables
+  // copy to sparse Tensor
+  // rowptr has nnzc + 1 elements
+  // colptr has nnzc elements
+
+  // set nnzc
+  // set data
+  // set indices
+
+
+  indices_a = THCSTensor_(newIndices)(state, sp1);
+  values_a = THCSTensor_(newValues)(state, sp1);
+  THCIndexTensor *rowIndicesB = THCIndexTensor_(newSelect)(state, indices_b, 0, 0);
+  THCIndexTensor *colIndicesB = THCIndexTensor_(newSelect)(state, indices_b, 0, 1);
+  csrB = THCSTensor_(toCSR)(state, rowIndicesB, m2, nnzb);
+
+  THCudaIntTensor *colIndicesIntB = THCudaIntTensor_newWithSize1d(state, colIndicesB->size[0]);
+  THCudaIntTensor_copyCudaLong(state, colIndicesIntB, colIndicesB);
+
+  /* free intermediate variables */
+  THCudaIntTensor_free(state, colIndicesIntA);
+  THCudaIntTensor_free(state, colIndicesIntB);
+  THCudaIntTensor_free(state, csrA);
+  THCudaIntTensor_free(state, csrB;
+  THCIndexTensor_(free)(state, indices_a);
+  THCIndexTensor_(free)(state, indices_b);
+  THCIndexTensor_(free)(state, rowIndicesA);
+  THCIndexTensor_(free)(state, rowIndicesA);
+  THCIndexTensor_(free)(state, colIndicesB);
+  THCIndexTensor_(free)(state, colIndicesB);
+  THCTensor_(free)(state, values_a);
+  THCTensor_(free)(state, values_b);
 #else
   THError("unimplemented data type");
 #endif
