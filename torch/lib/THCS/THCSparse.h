@@ -12,8 +12,8 @@ TH_API void THCudaSparse_Xcoo2csr(THCState *state, const int *coorowind, int64_t
 /* Level 3 */
 TH_API void THCudaSparse_Scsrmm2(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnz, float alpha, float *csrvala, int *csrrowptra, int *csrcolinda, float *b, int64_t ldb, float beta, float *c, int64_t ldc);
 TH_API void THCudaSparse_Dcsrmm2(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnz, double alpha, double *csrvala, int *csrrowptra, int *csrcolinda, double *b, int64_t ldb, double beta, double *c, int64_t ldc);
-TH_API void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, float *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, float *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t nnzc, float *csrvalc, int *csrrowptrc, int *csrcolindc);
-TH_API void THCudaSparse_Dcsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, double *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, double *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t nnzc, double *csrvalc, int *csrrowptrc, int *csrcolindc);
+TH_API void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, float *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, float *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t *nnzc, float *csrvalc, int *csrrowptrc, int *csrcolindc);
+TH_API void THCudaSparse_Dcsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, double *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, double *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t *nnzc, double *csrvalc, int *csrrowptrc, int *csrcolindc);
 
 /* format conversion */
 TH_API void THCudaSparse_CreateIdentityPermutation(THCState *state, int64_t nnz, int *P);

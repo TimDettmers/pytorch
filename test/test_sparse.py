@@ -402,13 +402,15 @@ class TestSparse(TestCase):
             x = self._gen_sparse(2, 20, [di, dj])[0]
             y = self._gen_sparse(2, 20, [dj, dk])[0]
 
+            print(x.size())
+            print(y.size())
+
             res = torch.spmms(x, y)
+            print(res)
             expected = torch.mm(x.to_dense(), y.to_dense())
             self.assertEqual(res.to_dense(), expected)
 
         test_shape(7, 5, 3)
-        test_shape(1000, 100, 100)
-        test_shape(3000, 64, 300)
         assert False
 
     def _test_spadd_shape(self, shape_i, shape_v=None):

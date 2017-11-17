@@ -93,13 +93,13 @@ void THCudaSparse_Dcsrmm2(THCState *state, char transa, char transb, int64_t m, 
   THCusparseCheck(cusparseDcsrmm2(handle, opa, opb, i_m, i_n, i_k, i_nnz, &alpha, desc, csrvala, csrrowptra, csrcolinda, b, i_ldb, &beta, c, i_ldc));
 }
 
-void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, float *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, float *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t nnzc, float *csrvalc, int *csrrowptrc, int *csrcolindc)
+void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, float *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, float *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t *nnzc, float *csrvalc, int *csrrowptrc, int *csrcolindc)
 {
 
   cusparseOperation_t opa = convertTransToCusparseOperation(transa);
   cusparseOperation_t opb = convertTransToCusparseOperation(transb);
 
-  THAssertMsg((m <= INT_MAX) && (n <= INT_MAX) && (k <= INT_MAX) && (nnza <= INT_MAX) && (nnzb <= INT_MAX) && (nnzc <= INT_MAX),
+  THAssertMsg((m <= INT_MAX) && (n <= INT_MAX) && (k <= INT_MAX) && (nnza <= INT_MAX) && (nnzb <= INT_MAX),
     "cusparseScsrgemm only supports m, n, k, nnzA, nnzB, and nnzC with the bound [val] <= %d",
     INT_MAX);
   int i_m = (int)m;
@@ -107,90 +107,129 @@ void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m,
   int i_k = (int)k;
   int i_nnza = (int)nnza;
   int i_nnzb = (int)nnzb;
-  int i_nnzc = (int)nnzc;
 
   cusparseHandle_t handle = THCState_getCurrentSparseHandle(state);
   cusparseSetStream(handle, THCState_getCurrentStream(state));
 
-  cusparseMatDescr_t descA;
-  cusparseCreateMatDescr(&descA);
-  cusparseMatDescr_t descB;
-  cusparseCreateMatDescr(&descB);
-  cusparseMatDescr_t descC;
-  cusparseCreateMatDescr(&descC);
+  cusparseMatDescr_t descrA;
+  cusparseCreateMatDescr(&descrA);
+  cusparseMatDescr_t descrB;
+  cusparseCreateMatDescr(&descrB);
+  cusparseMatDescr_t descrC;
+  cusparseCreateMatDescr(&descrC);
 
 #if TH_INDEX_BASE == 1
-  cusparseSetMatIndexBase(&descA, CUSPARSE_INDEX_BASE_ONE);
-  cusparseSetMatIndexBase(&descB, CUSPARSE_INDEX_BASE_ONE);
-  cusparseSetMatIndexBase(&descC, CUSPARSE_INDEX_BASE_ONE);
+  cusparseSetMatIndexBase(&descrA, CUSPARSE_INDEX_BASE_ONE);
+  cusparseSetMatIndexBase(&descrB, CUSPARSE_INDEX_BASE_ONE);
+  cusparseSetMatIndexBase(&descrC, CUSPARSE_INDEX_BASE_ONE);
 #endif
 
 	int baseC;
-	int *nnzTotalDevHostPtr = &nnzc;
+	int *nnzTotalDevHostPtr = 0;
 
-	CUDA_CHECK(THCudaMalloc(state, &csrrowptrc, m+1));
+	THCudaCheck(THCudaMalloc(state, (void**)(&csrrowptrc), m+1));
 
-  THCusparseCheck(cusparseXcsrgemmNnz(handle, transa, transb, m, n, k,
-          descrA, nnza, csrrowptra, csrcolinda,
-          descrB, nnzb, csrrowptrb, csrcolindb,
+  THCusparseCheck(cusparseXcsrgemmNnz(handle, opa, opb, i_m, i_n, i_k,
+          descrA, i_nnza, csrrowptra, csrcolinda,
+          descrB, i_nnzb, csrrowptrb, csrcolindb,
+          descrC, csrrowptrc, nnzTotalDevHostPtr));
+
+  *nnzc = (int64_t)(*nnzTotalDevHostPtr);
+
+	THCudaCheck(THCudaMalloc(state, (void**)(&csrcolindc), *nnzc));
+	THCudaCheck(THCudaMalloc(state, (void**)(&csrvalc), *nnzc));
+
+  THCusparseCheck(cusparseScsrgemm(handle, opa, opb, i_m, i_n, i_k,
+        descrA, i_nnza, csrvala, csrrowptra, csrcolinda,
+        descrB, i_nnzb, csrvalb, csrrowptrb, csrcolindb,
+        descrC, csrvalc, csrrowptrc, csrcolindc));
+}
+
+
+
+void THCudaSparse_Dcsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, double *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, double *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t *nnzc, double *csrvalc, int *csrrowptrc, int *csrcolindc)
+{
+
+  cusparseOperation_t opa = convertTransToCusparseOperation(transa);
+  cusparseOperation_t opb = convertTransToCusparseOperation(transb);
+
+  THAssertMsg((m <= INT_MAX) && (n <= INT_MAX) && (k <= INT_MAX) && (nnza <= INT_MAX) && (nnzb <= INT_MAX),
+    "cusparseScsrgemm only supports m, n, k, nnzA, nnzB, and nnzC with the bound [val] <= %d",
+    INT_MAX);
+  int i_m = (int)m;
+  int i_n = (int)n;
+  int i_k = (int)k;
+  int i_nnza = (int)nnza;
+  int i_nnzb = (int)nnzb;
+
+  cusparseHandle_t handle = THCState_getCurrentSparseHandle(state);
+  cusparseSetStream(handle, THCState_getCurrentStream(state));
+
+  cusparseMatDescr_t descrA;
+  cusparseCreateMatDescr(&descrA);
+  cusparseMatDescr_t descrB;
+  cusparseCreateMatDescr(&descrB);
+  cusparseMatDescr_t descrC;
+  cusparseCreateMatDescr(&descrC);
+
+#if TH_INDEX_BASE == 1
+  cusparseSetMatIndexBase(&descrA, CUSPARSE_INDEX_BASE_ONE);
+  cusparseSetMatIndexBase(&descrB, CUSPARSE_INDEX_BASE_ONE);
+  cusparseSetMatIndexBase(&descrC, CUSPARSE_INDEX_BASE_ONE);
+#endif
+
+	int baseC, nnzC = 0; // nnzTotalDevHostPtr points to host memory int *nnzTotalDevHostPtr = &nnzC;
+	int *nnzTotalDevHostPtr = &nnzC;
+
+	printf("m: %d\n", m);
+	printf("nnza: %ld\n", i_nnza);
+	printf("nnzb: %ld\n", i_nnzb);
+
+	THCudaCheck(THCudaMalloc(state, (void**)(&csrrowptrc), m+1));
+
+	printf("post pointer \n");
+
+  printf("m: %d \n", i_m);
+  printf("n: %d \n", i_n);
+  printf("k: %d \n", i_k);
+  printf("nnza: %d \n", i_nnza);
+  printf("nnzb: %d \n", i_nnzb);
+
+  THCusparseCheck(cusparseXcsrgemmNnz(handle, opa, opb, i_m, i_n, i_k,
+          descrA, i_nnza, csrrowptra, csrcolinda,
+          descrB, i_nnzb, csrrowptrb, csrcolindb,
           descrC, csrrowptrc, nnzTotalDevHostPtr));
 
   if (NULL != nnzTotalDevHostPtr)
   {
-      nnzc = *nnzTotalDevHostPtr;
-  }
-  else
-  {
-      CUDA_CHECK(cudaMemcpy(&nnzC, csrrowptrc+m, sizeof(int), cudaMemcpyDeviceToHost));
-      CUDA_CHECK(cudaMemcpy(&baseC, csrrowptrc, sizeof(int), cudaMemcpyDeviceToHost));
-      nnzc -= baseC;
-  }
+			printf("post nnzc %d \n", nnzC);
+      nnzC = *nnzTotalDevHostPtr;
+			printf("assigned!\n");
+			printf("post nnzc %d \n", nnzC);
+	}
+	else
+	{
 
-	THCudaCheck(THCudaMalloc(state, &csrcolindc, nnzc));
-	THCudaCheck(THCudaMalloc(state, &csrvalc, nnzc));
-
-  THCusparseCheck(cusparseScsrgemm(handle, opa, opb, i_m, i_n, i_k,
-        descA, i_nnza, csrvala, csrrowptra, csrcolinda,
-        descB, i_nnzb, csrvalb, csrrowptrb, csrcolindb,
-        descC, csrvalc, csrrowptrc, csrcolindc));
-}
+		printf("post nnzc %d \n", *nnzTotalDevHostPtr);
+		printf("post nnzc %d \n", nnzC);
+	}
 
 
-void THCudaSparse_Scsrgemm(THCState *state, char transa, char transb, int64_t m, int64_t n, int64_t k, int64_t nnza, double *csrvala, int *csrrowptra, int *csrcolinda, int64_t nnzb, double *csrvalb, int *csrrowptrb, int *csrcolindb, int64_t nnzc, double *csrvalc, int *csrrowptrc, int *csrcolindc)
-{
-  cusparseOperation_t opa = convertTransToCusparseOperation(transa);
-  cusparseOperation_t opb = convertTransToCusparseOperation(transb);
+  *nnzc = int64_t(*nnzTotalDevHostPtr);
 
-  THAssertMsg((m <= INT_MAX) && (n <= INT_MAX) && (k <= INT_MAX) && (nnza <= INT_MAX) && (nnzb <= INT_MAX) && (nnzc <= INT_MAX),
-    "cusparseScsrgemm only supports m, n, k, nnzA, nnzB, and nnzC with the bound [val] <= %d",
-    INT_MAX);
-  int i_m = (int)m;
-  int i_n = (int)n;
-  int i_k = (int)k;
-  int i_nnza = (int)nnza;
-  int i_nnzb = (int)nnzb;
-  int i_nnzc = (int)nnzc;
+  printf("nnzc2: %ld", nnzc);
 
-  cusparseHandle_t handle = THCState_getCurrentSparseHandle(state);
-  cusparseSetStream(handle, THCState_getCurrentStream(state));
+	THCudaCheck(THCudaMalloc(state, (void**)(&csrcolindc), nnzC));
+	THCudaCheck(THCudaMalloc(state, (void**)(&csrvalc), nnzC));
 
-  cusparseMatDescr_t descA;
-  cusparseCreateMatDescr(&descA);
-  cusparseMatDescr_t descB;
-  cusparseCreateMatDescr(&descB);
-  cusparseMatDescr_t descC;
-  cusparseCreateMatDescr(&descC);
-
-#if TH_INDEX_BASE == 1
-  cusparseSetMatIndexBase(&descA, CUSPARSE_INDEX_BASE_ONE);
-  cusparseSetMatIndexBase(&descB, CUSPARSE_INDEX_BASE_ONE);
-  cusparseSetMatIndexBase(&descC, CUSPARSE_INDEX_BASE_ONE);
-#endif
+	printf("post alloc \n");
 
   THCusparseCheck(cusparseDcsrgemm(handle, opa, opb, i_m, i_n, i_k,
-        descA, i_nnza, csrvala, csrrowptra, csrcolinda,
-        descB, i_nnzb, csrvalb, csrrowptrb, csrcolindb,
-        descC, csrvalc, csrrowptrc, csrcolindc));
+        descrA, i_nnza, csrvala, csrrowptra, csrcolinda,
+        descrB, i_nnzb, csrvalb, csrrowptrb, csrcolindb,
+        descrC, csrvalc, csrrowptrc, csrcolindc));
+
+	printf("post gemm \n");
 }
 
 /* format conversion */
